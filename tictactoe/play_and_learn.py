@@ -47,4 +47,13 @@ if __name__ == "__main__":
         else:
             print("Player {} won!".format(g.players[winner].name))
 
+    file_name = record_games(games)
+
+    print("\nREPLAYS!\n")
+    time.sleep(1)
+    replays = generate_replayable_games(file_name)
+    record_games(replays)
+
+    train()
+
 
