@@ -1,37 +1,57 @@
+import jwt
+from .jwt_secret import SECRET
 from copy import deepcopy
-
-
-def get_move_by_states(from_state, to_state):
-    for i in range(len(from_state)):
-        if from_state[i] != to_state[i]:
-            return i
+import random
 
 
 class Game(object):
 
-    def __init__(self, player1, player2, show_game=False):
-        self.show_game = show_game
-        self.players = [player1, player2]
+    def __init__(self):
+        self.players = self.choose_players()
         self.current_player = 0
         self.states = []
         self.moves = []
 
-        #generate empty board
-        self.states.append(
-            [-1,-1,-1,-1,-1,-1,-1,-1,-1]
-        )
+    def choose_players(self):
+        players = ['h','m']
+        random.shuffle(players)
+        return players
 
-    def restore(self,states,rewind=0):
-        for i in  range(len(states) - (1 + rewind)):
-            move = get_move_by_states(states[i], states[i + 1])
-            self.__play(move)
-            self.current_player = 1 if self.current_player == 0 else 0
+    def start(self):
+            #generate empty board
+            self.states.append(
+                [-1,-1,-1,-1,-1,-1,-1,-1,-1]
+            )
 
-    def play_move(self,move):
-        self.__play(move)
-        self.current_player = 1 if self.current_player == 0 else 0
+    @classmethod
+    def from_token(cls, token):
+        game = Game()
 
-    def _is_valid_move(self,move):
+        try:
+            payload = jwt.decode(token,SECRET, algorithms=['HS256'])
+
+            game.players = payload['players']
+            game.current_player = payload['current-player']
+            game.states = payload['states']
+            game.moves = payload['moves']
+
+            return game
+        except Exception as ex:
+            game.start()
+
+        return game
+
+    def to_token(self):
+        payload = {
+            'players': self.players,
+            'current-player': self.current_player,
+            'states': self.states,
+            'moves': self.moves
+        }
+
+        return jwt.encode(payload, SECRET, algorithm='HS256').decode('unicode_escape')
+
+    def _is_valid_move(self, move):
         try:
             move = int(move)
         except ValueError:
@@ -55,7 +75,7 @@ class Game(object):
 
         return valid_moves
 
-    def __play(self,move):
+    def play(self, move):
         if not self._is_valid_move(move):
             raise Exception("Invalid move!")
 
@@ -67,34 +87,7 @@ class Game(object):
         self.states.append(new_state)
         self.moves.append(move)
 
-    def __next_move(self):
-        player = self.players[self.current_player]
-
-        move = player.get_move(self)
-
-        self.__play(move)
-
         self.current_player = 1 if self.current_player == 0 else 0
-
-    def print_board(self):
-        if self.show_game:
-            current_state = self.states[-1]
-
-            board_str = "\n"
-            for f in range(9):
-                if f != 0 and f % 3 == 0:
-                    board_str += "\n"
-                elif f != 0:
-                    board_str += " "
-
-                if current_state[f] == 0:
-                    board_str += "X"
-                elif current_state[f] == 1:
-                    board_str += "O"
-                else:
-                    board_str += "_"
-
-            print(board_str)
 
     def get_winner(self):
         current_state = self.states[-1]
@@ -127,17 +120,6 @@ class Game(object):
                 moves_played += 1
 
         if moves_played == 9:
-            return -1
+            return 2
 
-        return None
-
-    def run(self):
-        winner = None
-        while winner is None:
-            self.print_board()
-            self.__next_move()
-
-            winner = self.get_winner()
-
-        self.print_board()
-        return winner
+        return -1

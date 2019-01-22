@@ -1,0 +1,5 @@
+indexes:
+- kind: Game
+  properties:
+  - name: winner
+  - name: timestamp
